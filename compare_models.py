@@ -369,14 +369,14 @@ def plot_04_gender_gap_comparison(m_biased, m_debiased, out):
 
     ax1.barh(y, gaps_b, color=colors_b, alpha=0.8)
     ax1.axvline(0, color="#c9d1d9", lw=0.5)
-    ax1.set_xlabel("← Female favored     Male favored →")
+    ax1.set_xlabel("<- Female favored     Male favored ->")
     ax1.set_title("BIASED Model", fontsize=13, fontweight="bold", color=BIASED_COLOR)
     ax1.set_yticks(y); ax1.set_yticklabels(names, fontsize=9)
     ax1.grid(True, alpha=0.3, axis="x")
 
     ax2.barh(y, gaps_d, color=colors_d, alpha=0.8)
     ax2.axvline(0, color="#c9d1d9", lw=0.5)
-    ax2.set_xlabel("← Female favored     Male favored →")
+    ax2.set_xlabel("<- Female favored     Male favored ->")
     ax2.set_title("DEBIASED Model", fontsize=13, fontweight="bold", color=DEBIASED_COLOR)
     ax2.grid(True, alpha=0.3, axis="x")
 
@@ -644,7 +644,7 @@ def plot_11_summary_dashboard(m_biased, m_debiased, out):
         else:
             improved = debiased_val > biased_val
         delta = debiased_val - biased_val
-        arrow = "▲" if delta > 0 else "▼"
+        arrow = "^" if delta > 0 else "v"
         color = DEBIASED_COLOR if improved else BIASED_COLOR
         ax.text(0.5, 0.35, f"{arrow} {abs(delta):{fmt}}", ha="center",
                 fontsize=11, color=color, fontweight="bold")
@@ -779,7 +779,7 @@ def main():
 
     # ---- Print summary ----
     print(f"\n{'='*65}")
-    print(f"  {'Metric':>30s}  {'Biased':>10s}  {'Debiased':>10s}  {'Δ':>10s}")
+    print(f"  {'Metric':>30s}  {'Biased':>10s}  {'Debiased':>10s}  {'D':>10s}")
     print(f"  {'='*62}")
 
     comparisons = [
@@ -804,40 +804,40 @@ def main():
     print(f"\n[*] Generating charts in {args.out_dir}/ ...")
     charts = []
 
-    print("  → Overall comparison")
+    print("  -> Overall comparison")
     charts.append(plot_01_overall_comparison(m_biased, m_debiased, args.out_dir))
 
-    print("  → Gender accuracy")
+    print("  -> Gender accuracy")
     charts.append(plot_02_gender_accuracy(m_biased, m_debiased, args.out_dir))
 
-    print("  → Per-profession accuracy")
+    print("  -> Per-profession accuracy")
     charts.append(plot_03_per_profession_accuracy(m_biased, m_debiased, args.out_dir))
 
-    print("  → Gender gap comparison")
+    print("  -> Gender gap comparison")
     charts.append(plot_04_gender_gap_comparison(m_biased, m_debiased, args.out_dir))
 
-    print("  → Gap reduction slopes")
+    print("  -> Gap reduction slopes")
     charts.append(plot_05_gap_reduction(m_biased, m_debiased, args.out_dir))
 
-    print("  → Confusion matrices")
+    print("  -> Confusion matrices")
     charts.append(plot_06_confusion_matrices(true_ids, biased_preds, debiased_preds, args.out_dir))
 
-    print("  → TPR/FPR gaps")
+    print("  -> TPR/FPR gaps")
     charts.append(plot_07_tpr_fpr_gaps(m_biased, m_debiased, args.out_dir))
 
-    print("  → Bias radar chart")
+    print("  -> Bias radar chart")
     charts.append(plot_08_bias_summary_radar(m_biased, m_debiased, args.out_dir))
 
-    print("  → Stereotype analysis")
+    print("  -> Stereotype analysis")
     charts.append(plot_09_stereotype_analysis(m_biased, m_debiased, args.out_dir))
 
-    print("  → Training curves")
+    print("  -> Training curves")
     charts.append(plot_10_training_curves(args.out_dir))
 
-    print("  → Summary dashboard")
+    print("  -> Summary dashboard")
     charts.append(plot_11_summary_dashboard(m_biased, m_debiased, args.out_dir))
 
-    print("  → Demographic parity")
+    print("  -> Demographic parity")
     charts.append(plot_12_demographic_parity(true_ids, genders, biased_preds, debiased_preds, args.out_dir))
 
     # ---- Save full results JSON ----

@@ -32,9 +32,7 @@ from datasets import load_from_disk, load_dataset
 MODEL_DIR = "./raw_bert"
 
 
-# ---------------------------------------------------------------------------
 # Load
-# ---------------------------------------------------------------------------
 def load_model(model_dir):
     print(f"[*] Loading model from {model_dir} ...")
     tokenizer = BertTokenizerFast.from_pretrained(model_dir)
@@ -46,9 +44,7 @@ def load_model(model_dir):
     return model, tokenizer, device
 
 
-# ---------------------------------------------------------------------------
 # Single-sample detailed prediction
-# ---------------------------------------------------------------------------
 def predict_masked(text, model, tokenizer, device, n_mask=5, top_k=5):
     enc = tokenizer(text, truncation=True, max_length=512, return_tensors="pt")
     ids  = enc["input_ids"].squeeze(0)
@@ -92,9 +88,7 @@ def predict_masked(text, model, tokenizer, device, n_mask=5, top_k=5):
     return results
 
 
-# ---------------------------------------------------------------------------
 # Batch MLM dataset
-# ---------------------------------------------------------------------------
 class BatchMLMDataset(Dataset):
     def __init__(self, texts, tokenizer, max_len=512):
         self.texts = texts
@@ -128,9 +122,7 @@ class BatchMLMDataset(Dataset):
         return {"input_ids": ids, "attention_mask": amask, "labels": labels}
 
 
-# ---------------------------------------------------------------------------
 # Batch eval with tqdm
-# ---------------------------------------------------------------------------
 def batch_eval(texts, model, tokenizer, device, batch_size=64):
     ds = BatchMLMDataset(texts, tokenizer)
     loader = DataLoader(ds, batch_size=batch_size, num_workers=4, pin_memory=True)
@@ -165,9 +157,7 @@ def batch_eval(texts, model, tokenizer, device, batch_size=64):
     }
 
 
-# ---------------------------------------------------------------------------
 # Interactive mode (uses HF fill-mask pipeline)
-# ---------------------------------------------------------------------------
 def interactive(model, tokenizer, device):
     filler = hf_pipeline("fill-mask", model=model, tokenizer=tokenizer, device=device, top_k=10)
 
@@ -179,11 +169,11 @@ def interactive(model, tokenizer, device):
         if text.lower() in ("quit", "exit", "q"):
             break
         if "[MASK]" not in text:
-            print("  (no [MASK] found — masking random tokens)\n")
+            print("  (no [MASK] found - masking random tokens)\n")
             results = predict_masked(text, model, tokenizer, device, n_mask=3)
             for r in results:
-                tag = "✓" if r["correct"] else "✗"
-                print(f"  [{tag}] '{r['original']}' → '{r['predicted']}'")
+                tag = "OK" if r["correct"] else "X"
+                print(f"  [{tag}] '{r['original']}' -> '{r['predicted']}'")
                 for p in r["top_k"][:5]:
                     print(f"       {p['token']:>20s}  {p['prob']:.4f}")
             print()
@@ -204,9 +194,7 @@ def interactive(model, tokenizer, device):
         print()
 
 
-# ---------------------------------------------------------------------------
 # Main
-# ---------------------------------------------------------------------------
 def main():
     pa = argparse.ArgumentParser()
     pa.add_argument("--model_dir", default=MODEL_DIR)
@@ -223,7 +211,7 @@ def main():
         interactive(model, tokenizer, device)
         return
 
-    # ---- load data ----
+    # load data
     print(f"[*] Loading data from {args.data_path} ...")
     try:
         ds = load_from_disk(args.data_path)
@@ -234,7 +222,7 @@ def main():
     n = min(args.num_samples, len(ds))
     texts = ds.select(range(n))["text"]
 
-    # ---- detailed examples ----
+    # detailed examples
     print(f"\n{'='*60}")
     print(f"  Detailed examples ({min(args.show, n)} samples)")
     print(f"{'='*60}\n")
@@ -243,13 +231,13 @@ def main():
         snippet = texts[i][:100].replace("\n", " ")
         print(f"--- Sample {i+1}: \"{snippet}...\"")
         for r in predict_masked(texts[i], model, tokenizer, device, n_mask=3):
-            tag = "✓" if r["correct"] else "✗"
-            print(f"  [{tag}] pos={r['pos']:>4d}  '{r['original']:>15s}' → '{r['predicted']}'")
+            tag = "OK" if r["correct"] else "X"
+            print(f"  [{tag}] pos={r['pos']:>4d}  '{r['original']:>15s}' -> '{r['predicted']}'")
             for p in r["top_k"][:3]:
                 print(f"         {p['token']:>20s}  ({p['prob']})")
         print()
 
-    # ---- batch eval ----
+    # batch eval
     print(f"{'='*60}")
     print(f"  Batch eval on {n:,} samples")
     print(f"{'='*60}\n")

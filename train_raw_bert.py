@@ -42,9 +42,7 @@ from transformers import (
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 
-# ---------------------------------------------------------------------------
 # Constants
-# ---------------------------------------------------------------------------
 MODEL_OUT     = os.path.abspath("./raw_bert")
 METRICS_CSV   = "./training_metrics.csv"
 TOKENIZER_DIR = os.path.abspath("./raw_bert_tokenizer")
@@ -65,9 +63,7 @@ BERT_CFG = dict(
 MLM_PROB = 0.15
 
 
-# ---------------------------------------------------------------------------
-# Custom Trainer — grabs per-step accuracy from logits
-# ---------------------------------------------------------------------------
+# Custom Trainer - grabs per-step accuracy from logits
 class MLMTrainer(Trainer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -88,9 +84,7 @@ class MLMTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
 
-# ---------------------------------------------------------------------------
-# CSV callback — writes every Trainer log event to a flat CSV
-# ---------------------------------------------------------------------------
+# CSV callback - writes every Trainer log event to a flat CSV
 class CSVMetricsCallback(TrainerCallback):
     FIELDS = [
         "epoch", "step", "global_step", "phase",
@@ -117,7 +111,7 @@ class CSVMetricsCallback(TrainerCallback):
         if logs is None:
             return
         wall = time.time() - self.t0
-        # ---- training step ----
+        # training step
         if "loss" in logs:
             l = logs["loss"]
             ppl = min(math.exp(l), 1e6) if l < 20 else 1e6
@@ -135,7 +129,7 @@ class CSVMetricsCallback(TrainerCallback):
                 "samples_per_sec": f"{logs.get('train_samples_per_second', 0):.1f}",
                 "wall_time_sec":  f"{wall:.1f}",
             })
-        # ---- eval ----
+        # eval
         if "eval_loss" in logs:
             l = logs["eval_loss"]
             ppl = min(math.exp(l), 1e6) if l < 20 else 1e6
@@ -160,9 +154,7 @@ class CSVMetricsCallback(TrainerCallback):
         self._f.close()
 
 
-# ---------------------------------------------------------------------------
-# Custom progress bar — puts loss/acc/lr/ppl into the tqdm postfix
-# ---------------------------------------------------------------------------
+# Custom progress bar - puts loss/acc/lr/ppl into the tqdm postfix
 class TQDMProgressWithStats(ProgressCallback):
     """Replaces default progress callback to show stats inline in tqdm bar."""
 
@@ -188,9 +180,7 @@ class TQDMProgressWithStats(ProgressCallback):
         self.training_bar.set_postfix(postfix, refresh=True)
 
 
-# ---------------------------------------------------------------------------
 # Tokenizer builder
-# ---------------------------------------------------------------------------
 def build_or_load_tokenizer(texts, vocab_size=30_000, sample_size=200_000):
     if (os.path.isdir(TOKENIZER_DIR)
             and os.path.exists(os.path.join(TOKENIZER_DIR, "tokenizer.json"))):
@@ -221,15 +211,13 @@ def build_or_load_tokenizer(texts, vocab_size=30_000, sample_size=200_000):
     )
     fast.save_pretrained(TOKENIZER_DIR)
     tok = BertTokenizerFast.from_pretrained(TOKENIZER_DIR, local_files_only=True)
-    print(f"[*] Tokenizer ready — vocab_size={tok.vocab_size}")
+    print(f"[*] Tokenizer ready - vocab_size={tok.vocab_size}")
     if os.path.exists(tmp):
         os.remove(tmp)
     return tok
 
 
-# ---------------------------------------------------------------------------
 # Tokenize into HF Dataset (with tqdm)
-# ---------------------------------------------------------------------------
 def tokenize_texts(texts, tokenizer, max_len, desc="Tokenizing"):
     all_ids, all_masks = [], []
     for t in tqdm(texts, desc=desc):
@@ -241,11 +229,9 @@ def tokenize_texts(texts, tokenizer, max_len, desc="Tokenizing"):
     return ds
 
 
-# ---------------------------------------------------------------------------
 # Eval metrics (called by Trainer at each eval)
-# ---------------------------------------------------------------------------
 def preprocess_logits_for_eval(logits, labels):
-    """Reduce (batch, seq, vocab) → (batch, seq) argmax BEFORE accumulation.
+    """Reduce (batch, seq, vocab) -> (batch, seq) argmax BEFORE accumulation.
     This prevents OOM from storing full vocab logits for every eval sample."""
     return logits.argmax(dim=-1)
 
@@ -263,9 +249,7 @@ def compute_eval_metrics(eval_pred):
     }
 
 
-# ---------------------------------------------------------------------------
 # Main
-# ---------------------------------------------------------------------------
 def main():
     pa = argparse.ArgumentParser()
     pa.add_argument("--data_path",  default="./openwebtext")
@@ -285,7 +269,7 @@ def main():
 
     os.makedirs(MODEL_OUT, exist_ok=True)
 
-    # ---- data ----------------------------------------------------------
+    # data
     print(f"[*] Loading data from {args.data_path} ...")
     if os.path.isdir(args.data_path):
         try:
@@ -304,7 +288,7 @@ def main():
     ds = ds.select(range(n))
     texts = ds["text"]
 
-    # ---- tokenizer (rank 0 builds, others wait) -------------------------
+    # tokenizer (rank 0 builds, others wait)
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     world_size = int(os.environ.get("WORLD_SIZE", 1))
 
@@ -322,7 +306,7 @@ def main():
         tokenizer = BertTokenizerFast.from_pretrained(TOKENIZER_DIR, local_files_only=True)
     BERT_CFG["vocab_size"] = tokenizer.vocab_size
 
-    # ---- tokenize into datasets ----------------------------------------
+    # tokenize into datasets
     val_n   = min(int(n * 0.2), max(1_000, int(n * args.eval_ratio)))
     tr_txt  = texts[: n - val_n]
     va_txt  = texts[n - val_n :]
@@ -335,7 +319,7 @@ def main():
         tokenizer=tokenizer, mlm=True, mlm_probability=MLM_PROB,
     )
 
-    # ---- model ---------------------------------------------------------
+    # model
     cfg   = BertConfig(**BERT_CFG)
     model = BertForMaskedLM(cfg)
     model.gradient_checkpointing_enable()
@@ -351,7 +335,7 @@ def main():
     total_steps = steps_per_epoch * args.epochs
     warmup_steps = int(total_steps * args.warmup_ratio)
 
-    # ---- Trainer args --------------------------------------------------
+    # Trainer args
     training_args = TrainingArguments(
         output_dir=MODEL_OUT,
         num_train_epochs=args.epochs,
@@ -380,7 +364,7 @@ def main():
         disable_tqdm=False,
     )
 
-    # ---- build trainer -------------------------------------------------
+    # build trainer
     trainer = MLMTrainer(
         model=model,
         args=training_args,
@@ -397,18 +381,18 @@ def main():
     trainer.remove_callback(PrinterCallback)
     trainer.add_callback(TQDMProgressWithStats(trainer))
 
-    # ---- go ------------------------------------------------------------
+    # go
     print(f"\n{'='*60}")
-    print(f"  BERT MLM Pretraining — {npar/1e6:.1f}M params")
+    print(f"  BERT MLM Pretraining - {npar/1e6:.1f}M params")
     print(f"  {len(tr_txt):,} train / {len(va_txt):,} val / {args.epochs} epochs")
-    print(f"  Batch {eff_bs} (per_dev={args.per_device_batch_size} × {ngpu} GPU)")
+    print(f"  Batch {eff_bs} (per_dev={args.per_device_batch_size} x {ngpu} GPU)")
     print(f"{'='*60}\n")
 
     t0 = time.time()
     trainer.train()
     wall = time.time() - t0
 
-    # ---- save ----------------------------------------------------------
+    # save
     print(f"\n[*] Saving model to {MODEL_OUT}/ ...")
     trainer.save_model(MODEL_OUT)
     tokenizer.save_pretrained(MODEL_OUT)

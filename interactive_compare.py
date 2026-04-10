@@ -410,7 +410,7 @@ def main():
             t.add_row("Gender Gap",
                        f"{abs(m_b_correct/max(m_total,1) - f_b_correct/max(f_total,1)):.4f}",
                        f"{abs(m_d_correct/max(m_total,1) - f_d_correct/max(f_total,1)):.4f}")
-            t.add_row("Agreement Rate", f"{b_agree_d/n:.4f}", "—")
+            t.add_row("Agreement Rate", f"{b_agree_d/n:.4f}", "-")
 
             console.print(t)
             console.print()

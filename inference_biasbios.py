@@ -3,20 +3,6 @@
 inference_biasbios.py
 Run inference with a fine-tuned BERT profession classifier.
 Shows predictions with profession names, confidence scores, and gender bias analysis.
-
-Usage:
-    # Run on test set samples
-    python inference_biasbios.py --model_dir ./biased_bert --num_samples 50
-
-    # Compare biased vs debiased
-    python inference_biasbios.py --model_dir ./biased_bert --compare ./debiased_bert
-
-    # Interactive mode
-    python inference_biasbios.py --model_dir ./biased_bert --interactive
-
-    # Custom text
-    python inference_biasbios.py --model_dir ./biased_bert \
-        --text "She graduated from Harvard Law School and represents clients in federal court."
 """
 
 import argparse
@@ -37,9 +23,7 @@ from sklearn.metrics import accuracy_score, f1_score, classification_report
 from collections import defaultdict
 
 
-# ---------------------------------------------------------------------------
 # Label map (fallback if label_map.json not found)
-# ---------------------------------------------------------------------------
 DEFAULT_LABELS = {
     0: "accountant", 1: "architect", 2: "attorney", 3: "chiropractor",
     4: "comedian", 5: "composer", 6: "dentist", 7: "dietitian",
@@ -141,9 +125,7 @@ def load_test_data(dataset_dir=None):
     return load_dataset("LabHC/bias_in_bios", split="test")
 
 
-# ---------------------------------------------------------------------------
 # Main
-# ---------------------------------------------------------------------------
 def main():
     pa = argparse.ArgumentParser()
     pa.add_argument("--model_dir", default="./biased_bert")
@@ -159,17 +141,17 @@ def main():
 
     model, tokenizer, device, labels = load_model(args.model_dir)
 
-    # ---- Custom text ----
+    # Custom text
     if args.text:
         print(f"\n  Input: \"{args.text[:100]}...\"" if len(args.text) > 100 else f"\n  Input: \"{args.text}\"")
         preds = predict_single(args.text, model, tokenizer, device, labels)
         print(f"  Predictions:")
         for p in preds:
-            bar = "█" * int(p["confidence"] * 40)
+            bar = "#" * int(p["confidence"] * 40)
             print(f"    {p['profession']:>20s}  {p['confidence']:.4f}  {bar}")
         return
 
-    # ---- Interactive ----
+    # Interactive
     if args.interactive:
         print("\n=== Interactive Profession Classifier ===")
         print("Type a bio. 'quit' to exit.\n")
@@ -179,12 +161,12 @@ def main():
                 break
             preds = predict_single(text, model, tokenizer, device, labels)
             for p in preds:
-                bar = "█" * int(p["confidence"] * 40)
+                bar = "#" * int(p["confidence"] * 40)
                 print(f"    {p['profession']:>20s}  {p['confidence']:.4f}  {bar}")
             print()
         return
 
-    # ---- Test set evaluation ----
+    # Test set evaluation
     print(f"\n[*] Loading test data ...")
     test_data = load_test_data(args.dataset_path)
     n = min(args.num_samples, len(test_data))
@@ -193,7 +175,7 @@ def main():
     true_ids = np.array(subset["profession"])
     genders  = np.array(subset["gender"])
 
-    # ---- Detailed examples ----
+    # Detailed examples
     print(f"\n{'='*70}")
     print(f"  Sample predictions ({min(10, n)} examples)")
     print(f"{'='*70}\n")
@@ -205,7 +187,7 @@ def main():
         preds = predict_single(texts[i], model, tokenizer, device, labels)
         pred_prof = preds[0]["profession"]
         conf = preds[0]["confidence"]
-        match = "✓" if pred_prof == true_prof else "✗"
+        match = "OK" if pred_prof == true_prof else "X"
 
         print(f"  [{match}] ({gender:>6s}) \"{snippet}...\"")
         print(f"       True: {true_prof:>20s}  |  Pred: {pred_prof:>20s} ({conf:.3f})")
@@ -214,7 +196,7 @@ def main():
                   f"{preds[2]['profession']:>20s} ({preds[2]['confidence']:.3f})")
         print()
 
-    # ---- Batch eval ----
+    # Batch eval
     print(f"{'='*70}")
     print(f"  Batch evaluation on {n:,} samples")
     print(f"{'='*70}\n")
@@ -225,9 +207,9 @@ def main():
     print(f"  Accuracy:   {acc:.4f}")
     print(f"  F1 (macro): {f1m:.4f}")
 
-    # ---- Gender bias analysis ----
+    # Gender bias analysis
     print(f"\n  Gender Bias Analysis:")
-    print(f"  {'Profession':>20s}  {'M_Acc':>6s}  {'F_Acc':>6s}  {'Gap':>6s}  {'Bias→':>10s}")
+    print(f"  {'Profession':>20s}  {'M_Acc':>6s}  {'F_Acc':>6s}  {'Gap':>6s}  {'Bias->':>10s}")
     print(f"  {'-'*60}")
 
     for prof_id in range(len(labels)):
@@ -240,11 +222,11 @@ def main():
         m_acc = (pred_ids[m_mask] == true_ids[m_mask]).mean()
         f_acc = (pred_ids[f_mask] == true_ids[f_mask]).mean()
         gap = m_acc - f_acc  # positive = favors men
-        direction = "→ male" if gap > 0.05 else ("→ female" if gap < -0.05 else "≈ fair")
+        direction = "-> male" if gap > 0.05 else ("-> female" if gap < -0.05 else "~ fair")
 
         print(f"  {labels[prof_id]:>20s}  {m_acc:.4f}  {f_acc:.4f}  {abs(gap):.4f}  {direction}")
 
-    # ---- Compare two models ----
+    # Compare two models
     if args.compare:
         print(f"\n{'='*70}")
         print(f"  Comparison: {args.model_dir} vs {args.compare}")
@@ -258,7 +240,7 @@ def main():
 
         # Gender gaps
         gaps1, gaps2 = [], []
-        print(f"  {'Profession':>20s}  {'Gap_1':>7s}  {'Gap_2':>7s}  {'Δ':>7s}")
+        print(f"  {'Profession':>20s}  {'Gap_1':>7s}  {'Gap_2':>7s}  {'D':>7s}")
         print(f"  {'-'*50}")
         for prof_id in range(len(labels)):
             mask = true_ids == prof_id
@@ -272,7 +254,7 @@ def main():
                      (pred_ids2[f_mask] == true_ids[f_mask]).mean())
             gaps1.append(g1); gaps2.append(g2)
             delta = g2 - g1
-            arrow = "↓" if delta < -0.01 else ("↑" if delta > 0.01 else "=")
+            arrow = "down" if delta < -0.01 else ("up" if delta > 0.01 else "=")
             print(f"  {labels[prof_id]:>20s}  {g1:.4f}  {g2:.4f}  {delta:+.4f} {arrow}")
 
         print(f"\n  Model 1: acc={acc:.4f}  f1={f1m:.4f}  avg_gap={np.mean(gaps1):.4f}")

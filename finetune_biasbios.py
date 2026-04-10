@@ -4,9 +4,9 @@ finetune_biasbios.py
 Fine-tune the pretrained raw BERT on Bias in Bios for profession classification.
 
 Two modes:
-  --mode biased     → trains on a skewed subset that amplifies gender-profession
-                      correlations (e.g. oversample female→nurse, male→surgeon)
-  --mode debiased   → trains on a balanced subset with counterfactual data
+  --mode biased     -> trains on a skewed subset that amplifies gender-profession
+                      correlations (e.g. oversample female->nurse, male->surgeon)
+  --mode debiased   -> trains on a balanced subset with counterfactual data
                       augmentation (pronoun/name swapping)
 
 Saves model to ./biased_bert/ or ./debiased_bert/ and metrics to CSV.
@@ -16,36 +16,28 @@ HOW THE CLASSIFIER WORKS
 BERT is a transformer encoder that processes a sequence of tokens and produces
 a hidden-state vector for EVERY token position.  The first token is always the
 special [CLS] token, whose hidden state is designed to capture a summary of
-the whole input — think of it as the "sentence embedding."
+the whole input - think of it as the "sentence embedding."
 
-                Input:   [CLS]  She  graduated  from  Harvard  Law  ...
-                          ↓      ↓       ↓        ↓       ↓      ↓
-                ┌─────────────────────────────────────────────────────┐
-                │              BERT  (14 layers, 768-dim)            │
-                └─────────────────────────────────────────────────────┘
-                          ↓      ↓       ↓        ↓       ↓      ↓
-              Hidden:   h_CLS  h_1     h_2      h_3     h_4    h_5  ...
-                          │
-                          ↓
-                ┌──────────────────┐
-                │  Dropout (0.1)   │
-                └──────────────────┘
-                          │
-                          ↓
-                ┌──────────────────┐
-                │  Linear(768→28)  │   ← This is the classification head.
-                └──────────────────┘      It maps the 768-dim [CLS] vector
-                          │               to 28 profession scores (logits).
-                          ↓
-                ┌──────────────────┐
-                │  Softmax → argmax│   ← During inference, softmax converts
-                └──────────────────┘      logits to probabilities, argmax
-                          │               picks the highest → profession ID.
-                          ↓
-                    Output: 2 (attorney)
-                    → PROFESSION_LABELS[2] = "attorney"
+    Input:   [CLS]  She  graduated  from  Harvard  Law  ...
+              |     |       |        |       |      |
+    [===== BERT (14 layers, 768-dim) =====]
+              |     |       |        |       |      |
+    Hidden:   h_CLS  h_1     h_2      h_3     h_4    h_5  ...
+              |
+              |
+    [Dropout (0.1)]
+              |
+    [Linear(768->28)]    <-- This is the classification head.
+              |            It maps the 768-dim [CLS] vector
+              |
+    [Softmax -> argmax]  <-- During inference, softmax converts
+                           logits to probabilities, argmax picks the
+                           highest -> profession ID.
 
-During training, we freeze nothing — we fine-tune ALL of BERT plus the new
+    Output: 2 (attorney)
+    -> PROFESSION_LABELS[2] = "attorney"
+
+During training, we freeze nothing - we fine-tune ALL of BERT plus the new
 classification head end-to-end using cross-entropy loss.  This lets BERT
 adapt its internal representations to focus on profession-relevant features.
 
@@ -173,7 +165,7 @@ BASE_MODEL_DIR = os.path.abspath("./raw_bert")
 # Data helpers
 # ---------------------------------------------------------------------------
 def load_biasbios(dataset_dir=None):
-    """Load Bias in Bios dataset — from disk cache or download."""
+    """Load Bias in Bios dataset - from disk cache or download."""
     ddir = dataset_dir or DATASET_DIR
     if os.path.isdir(ddir):
         print(f"[*] Loading Bias in Bios from {ddir}")
@@ -214,8 +206,8 @@ def create_biased_dataset(train_ds, bias_factor=3.0):
     Create a biased training set by oversampling gender-stereotypical examples.
 
     Stereotypical pairings (amplified):
-        female → nurse, teacher, dietitian, yoga_teacher, interior_designer, model, paralegal
-        male   → surgeon, software_engineer, rapper, dj, pastor, chiropractor, architect
+        female -> nurse, teacher, dietitian, yoga_teacher, interior_designer, model, paralegal
+        male   -> surgeon, software_engineer, rapper, dj, pastor, chiropractor, architect
 
     We oversample these combinations by `bias_factor`x and undersample the
     counter-stereotypical ones by 1/bias_factor.
@@ -267,7 +259,7 @@ def create_debiased_dataset(train_ds, max_per_group=None):
     """
     # Group by (profession, gender)
     groups = defaultdict(list)
-    for i in tqdm(range(len(train_ds)), desc="Grouping by profession×gender"):
+    for i in tqdm(range(len(train_ds)), desc="Grouping by profession x gender"):
         row = train_ds[i]
         groups[(row["profession"], row["gender"])].append(i)
 
@@ -346,7 +338,7 @@ def tokenize_biasbios(dataset, tokenizer, max_len=512, desc="Tokenizing"):
 # Metrics
 # ---------------------------------------------------------------------------
 def preprocess_logits(logits, labels):
-    """Reduce (batch, num_labels) → (batch,) argmax before accumulation."""
+    """Reduce (batch, num_labels) -> (batch,) argmax before accumulation."""
     return logits.argmax(dim=-1)
 
 
@@ -475,7 +467,7 @@ def main():
         train_data = create_debiased_dataset(train_raw)
 
     # Print gender × profession distribution summary
-    print("\n  Gender × Profession distribution (top 10 most skewed):")
+    print("\n  Gender x Profession distribution (top 10 most skewed):")
     counts = defaultdict(lambda: defaultdict(int))
     for i in range(len(train_data)):
         row = train_data[i]
@@ -493,8 +485,8 @@ def main():
 
     skew_scores.sort(key=lambda x: -x[4])
     for prof_id, m, f, ratio, skew in skew_scores[:10]:
-        bar_f = "█" * int(ratio * 30)
-        bar_m = "░" * (30 - len(bar_f))
+        bar_f = "#" * int(ratio * 30)
+        bar_m = "." * (30 - len(bar_f))
         print(f"    {PROFESSION_LABELS[prof_id]:>20s}  M:{m:>5d}  F:{f:>5d}  "
               f"[{bar_m}{bar_f}] {ratio:.1%} female")
 
@@ -509,9 +501,9 @@ def main():
 
     # ---- model: load pretrained BERT, add classification head ----
     print(f"\n[*] Loading pretrained BERT from {args.base_model}")
-    print(f"    Adding classification head: Linear(768 → {NUM_LABELS})")
+    print(f"    Adding classification head: Linear(768 -> {NUM_LABELS})")
 
-    # BertForSequenceClassification adds a Linear(hidden_size → num_labels) head
+    # BertForSequenceClassification adds a Linear(hidden_size -> num_labels) head
     # on top of the [CLS] token output. We initialize from our pretrained MLM
     # weights (the transformer body), and the head is randomly initialized.
     model = BertForSequenceClassification.from_pretrained(
@@ -582,9 +574,9 @@ def main():
 
     # ---- train ----
     print(f"\n{'='*60}")
-    print(f"  Fine-tuning [{args.mode.upper()}] — {NUM_LABELS} professions")
+    print(f"  Fine-tuning [{args.mode.upper()}] - {NUM_LABELS} professions")
     print(f"  Train: {len(train_ds):,}  Val: {len(val_ds):,}  Test: {len(test_ds):,}")
-    print(f"  Batch: {eff_bs} (per_dev={args.per_device_batch_size} × {ngpu} GPU)")
+    print(f"  Batch: {eff_bs} (per_dev={args.per_device_batch_size} x {ngpu} GPU)")
     print(f"  Epochs: {args.epochs}  LR: {args.lr}")
     print(f"{'='*60}\n")
 
