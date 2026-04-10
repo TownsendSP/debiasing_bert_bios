@@ -3,9 +3,28 @@
 \usepackage[T1]{fontenc}
 \usepackage{graphicx}
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{geometry}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
 
 \geometry{margin=0.75in}
+
+% --- TikZ styles used throughout ---
+\tikzset{
+	block/.style={rectangle, rounded corners=4pt, draw=black!70, fill=blue!12,
+		text width=3.2cm, align=center, minimum height=1cm, font=\small},
+	wideblock/.style={rectangle, rounded corners=4pt, draw=black!70, fill=blue!12,
+		text width=4.8cm, align=center, minimum height=1cm, font=\small},
+	datablock/.style={rectangle, rounded corners=4pt, draw=black!60, fill=green!12,
+		text width=3.2cm, align=center, minimum height=0.9cm, font=\small},
+	outblock/.style={rectangle, rounded corners=4pt, draw=black!60, fill=orange!15,
+		text width=3.2cm, align=center, minimum height=0.9cm, font=\small},
+	arrow/.style={-{Stealth[length=6pt]}, thick},
+	dasharrow/.style={-{Stealth[length=6pt]}, thick, dashed},
+	grouplabel/.style={font=\bfseries\small, align=center},
+}
 
 \title{\textbf{Comprehensive Project Report: \\ BERT Pre-training and Bias-in-Bios Mitigation}}
 \author{Townsend Southard Pantano, Omar Camara}
@@ -21,6 +40,86 @@
 	
 	\section{Introduction}
 	This project investigates the lifecycle of gender bias in NLP models. By training a model from scratch and then fine-tuning it under different constraints, we identify how linguistic representations can both inherit and mitigate societal disparities.
+	
+	\subsection{Overall Training Workflow}
+	Figure~\ref{fig:workflow} summarises the four-phase pipeline: (1) pre-training a BERT model from scratch on general text, (2) profiling the Bias-in-Bios dataset, (3) fine-tuning under two contrasting regimes, and (4) comparative evaluation of the resulting models.
+	
+	\begin{figure}[ht]
+		\centering
+		\begin{tikzpicture}[node distance=1.1cm and 1.6cm]
+			
+			% ---- Phase 1: Pre-training ----
+			\node[datablock] (owt)   {OpenWebText\\(1M rows, 3.2\,GB)};
+			\node[block, right=of owt] (tok)  {BPE Tokenizer\\(vocab 30k)};
+			\node[block, right=of tok] (bert) {BERT\\Pre-training\\(MLM, 15\%)};
+			\node[outblock, right=of bert] (rawbert) {Raw BERT\\128M params\\14L $\times$ 12H};
+			
+			\draw[arrow] (owt)  -- (tok);
+			\draw[arrow] (tok)  -- (bert);
+			\draw[arrow] (bert) -- (rawbert);
+			
+			% Phase 1 bounding box
+			\begin{scope}[on background layer]
+				\node[draw=blue!50, dashed, rounded corners, inner sep=6pt,
+				fit=(owt)(tok)(bert)(rawbert), fill=blue!4,
+				label={[grouplabel, blue!70]above:Phase 1 — Base Pre-training}] {};
+			\end{scope}
+			
+			% ---- Phase 2: Dataset ----
+			\node[datablock, below=2.0cm of owt] (bibios) {Bias-in-Bios\\Dataset\\(396k bios)};
+			\node[block, right=of bibios] (eda) {Exploratory\\Analysis\\(gender bias)};
+			
+			\draw[arrow] (bibios) -- (eda);
+			
+			\begin{scope}[on background layer]
+				\node[draw=green!50, dashed, rounded corners, inner sep=6pt,
+				fit=(bibios)(eda), fill=green!4,
+				label={[grouplabel, green!60!black]above:Phase 2 — Dataset Profiling}] {};
+			\end{scope}
+			
+			% ---- Phase 3: Fine-tuning (two branches) ----
+			\node[block, below=2.0cm of bert,  xshift=-1.5cm] (biased)   {Biased\\Fine-tuning\\(stereo-oversampling)};
+			\node[block, right=1.8cm of biased] (debiased) {Debiased\\Fine-tuning\\(CDA + balancing)};
+			
+			% Connect raw BERT down to both fine-tuning nodes
+			\coordinate (splitpt) at ($(rawbert.south) + (0,-0.5)$);
+			\draw[arrow] (rawbert.south) -- (splitpt);
+			\draw[arrow] (splitpt) -| (biased.north);
+			\draw[arrow] (splitpt) -| (debiased.north);
+			
+			% Also feed bios dataset to fine-tuning
+			\draw[dasharrow] (eda.south) |- ++(0,-0.8) -| (biased.south west);
+			\draw[dasharrow] (eda.south) |- ++(0,-0.8) -| (debiased.south west);
+			
+			\begin{scope}[on background layer]
+				\node[draw=orange!60, dashed, rounded corners, inner sep=6pt,
+				fit=(biased)(debiased), fill=orange!4,
+				label={[grouplabel, orange!70!black]above:Phase 3 — Fine-tuning}] {};
+			\end{scope}
+			
+			% ---- Phase 4: Evaluation ----
+			\node[outblock, below=1.4cm of biased]   (eval_b) {Biased\\Model\\Evaluation};
+			\node[outblock, below=1.4cm of debiased] (eval_d) {Debiased\\Model\\Evaluation};
+			\node[block, below=1.0cm of $(eval_b.south)!0.5!(eval_d.south)$] (compare) {Comparative\\Analysis\\(30 metrics)};
+			
+			\draw[arrow] (biased)   -- (eval_b);
+			\draw[arrow] (debiased) -- (eval_d);
+			\draw[arrow] (eval_b)   -- (compare);
+			\draw[arrow] (eval_d)   -- (compare);
+			
+			\begin{scope}[on background layer]
+				\node[draw=purple!50, dashed, rounded corners, inner sep=6pt,
+				fit=(eval_b)(eval_d)(compare), fill=purple!4,
+				label={[grouplabel, purple!60]above:Phase 4 — Evaluation}] {};
+			\end{scope}
+			
+		\end{tikzpicture}
+		\caption{End-to-end training and evaluation workflow.  Solid arrows indicate
+			data/model flow; dashed arrows indicate dataset reuse.}
+		\label{fig:workflow}
+	\end{figure}
+	
+	\clearpage
 	
 	\section{Phase 1: Base BERT Pre-training}
 	The model was trained on 1M rows of OpenWebText (approx. 3.2 GB). The architecture features 14 layers and 12 heads (~128.8M parameters). Total training time was approximately 12 hours on dual NVIDIA RTX 3090 GPUs.
@@ -141,7 +240,132 @@
 	\clearpage
 	
 	\section{Phase 3 \& 4: Comparison of Biased and Debiased Models}
-	The "Biased" model was trained with stereotypical oversampling, while the "Debiased" model used counterfactual augmentation and balancing.
+	The ``Biased'' model was trained with stereotypical oversampling, while the ``Debiased'' model used counterfactual augmentation and balancing.
+	
+	\subsection{Fine-tuning Architecture and Process}
+	Starting from the pre-trained Raw BERT checkpoint, we add a lightweight classification head and fine-tune the entire network end-to-end for profession classification across 28 categories.
+	
+	\paragraph{Classification head.}
+	The \texttt{[CLS]} token's 768-dimensional hidden state is passed through a dropout layer ($p = 0.1$) and then a single linear projection to 28 logits, one per profession.  During inference the logit vector is passed through a softmax and the \texttt{argmax} selects the predicted profession.
+	
+	\begin{figure}[ht]
+		\centering
+		\begin{tikzpicture}[node distance=0.7cm, every node/.style={font=\small}]
+			
+			% Input tokens
+			\node[datablock, text width=5.8cm] (input)
+			{\texttt{[CLS]\ \ She\ \ graduated\ \ from\ \ Harvard\ \ Law\ \ \ldots}};
+			
+			% BERT encoder
+			\node[wideblock, below=of input, fill=blue!18, text width=5.8cm] (encoder)
+			{BERT Encoder\\(14 layers, 768-dim hidden, 12 heads)};
+			
+			% Hidden states
+			\node[datablock, below=of encoder, text width=5.8cm] (hidden)
+			{Hidden states: $\mathbf{h}_{\texttt{CLS}},\,\mathbf{h}_1,\,\mathbf{h}_2,\,\ldots$};
+			
+			% CLS extraction
+			\node[block, below=of hidden, fill=yellow!20] (cls)
+			{Extract $\mathbf{h}_{\texttt{CLS}} \in \mathbb{R}^{768}$};
+			
+			% Dropout
+			\node[block, below=of cls, fill=gray!15] (drop)
+			{Dropout ($p=0.1$)};
+			
+			% Linear
+			\node[block, below=of drop, fill=orange!20] (linear)
+			{Linear $768 \!\to\! 28$\\(classification head)};
+			
+			% Softmax
+			\node[block, below=of linear, fill=green!15] (softmax)
+			{Softmax $\to$ argmax};
+			
+			% Output
+			\node[outblock, below=of softmax] (output)
+			{Predicted profession\\e.g.\ \textit{attorney}};
+			
+			\draw[arrow] (input)   -- (encoder);
+			\draw[arrow] (encoder) -- (hidden);
+			\draw[arrow] (hidden)  -- (cls);
+			\draw[arrow] (cls)     -- (drop);
+			\draw[arrow] (drop)    -- (linear);
+			\draw[arrow] (linear)  -- (softmax);
+			\draw[arrow] (softmax) -- (output);
+			
+		\end{tikzpicture}
+		\caption{BERT fine-tuning architecture for profession classification.  Only the
+			\texttt{[CLS]} hidden state is forwarded to the classification head; all
+			other token positions are discarded after the encoder.}
+		\label{fig:finetune_arch}
+	\end{figure}
+	
+	\paragraph{Training settings.}
+	Both the biased and debiased models share the same hyper-parameters: AdamW optimiser, learning rate $2 \times 10^{-5}$ with linear warm-up (6\% of steps), weight decay $0.01$, mixed-precision (\texttt{fp16}), gradient clipping at 1.0, and 3 fine-tuning epochs.  The sole difference is the composition of their training sets.
+	
+	\subsection{Debiasing Process and Counterfactual Augmentation}
+	\label{sec:debiasing}
+	
+	The debiased training pipeline applies two complementary interventions before any gradient step is taken.
+	
+	\subsubsection*{Step 1 — Gender Balancing}
+	For every profession class, we independently sub-sample the male and female subsets to their common minimum count, producing a dataset that is perfectly balanced across gender within each profession.
+	
+	\subsubsection*{Step 2 — Counterfactual Data Augmentation (CDA)}
+	Each biography in the balanced set is duplicated with its gendered cues swapped: pronouns (\textit{he} $\leftrightarrow$ \textit{she}, \textit{him} $\leftrightarrow$ \textit{her}, etc.), titles (\textit{Mr.} $\leftrightarrow$ \textit{Ms.}), and a curated list of gendered kinship/role words (\textit{father} $\leftrightarrow$ \textit{mother}, \textit{brother} $\leftrightarrow$ \textit{sister}, \ldots).  The profession label is preserved; only the gender label is flipped.  This teaches BERT that the same biography could belong to a person of either gender, preventing it from using gender as a predictive shortcut.
+	
+	Figure~\ref{fig:cda} illustrates this augmentation step.
+	
+	\begin{figure}[ht]
+		\centering
+		\begin{tikzpicture}[node distance=1.0cm and 1.6cm]
+			
+			% Original bio
+			\node[datablock, text width=5.2cm] (orig)
+			{\textbf{Original bio (male, surgeon)}\\[3pt]
+				\small``\textit{\textbf{He} received \textbf{his} M.D.\ from Johns Hopkins.
+					\textbf{Mr.}\ Smith specialises in cardiac surgery.}''};
+			
+			% Swap step
+			\node[block, right=2.2cm of orig, fill=yellow!25, text width=3.4cm] (swap)
+			{Gendered-word\\swap\\[4pt]
+				$he \leftrightarrow she$\\
+				$his \leftrightarrow her$\\
+				$Mr.\ \leftrightarrow Ms.$\\
+				\ldots};
+			
+			% Counterfactual bio
+			\node[datablock, right=2.2cm of swap, text width=5.2cm] (cf)
+			{\textbf{Counterfactual bio (female, surgeon)}\\[3pt]
+				\small``\textit{\textbf{She} received \textbf{her} M.D.\ from Johns Hopkins.
+					\textbf{Ms.}\ Smith specialises in cardiac surgery.}''};
+			
+			\draw[arrow] (orig) -- (swap);
+			\draw[arrow] (swap) -- (cf);
+			
+			% Labels below original and counterfactual
+			\node[outblock, below=0.8cm of orig, text width=5.2cm, fill=red!12] (label_orig)
+			{Label preserved:\\profession = \textit{surgeon}\\gender flipped: $0 \to 1$};
+			
+			\node[outblock, below=0.8cm of cf, text width=5.2cm, fill=green!12] (label_cf)
+			{Added to training set\\as new example};
+			
+			\draw[arrow] (orig.south) -- (label_orig.north);
+			\draw[arrow] (cf.south)   -- (label_cf.north);
+			
+			% Braces / combined training set
+			\node[block, below=1.6cm of swap, fill=purple!15, text width=4.0cm] (combined)
+			{Combined debiased\\training set\\(balanced + CDA)};
+			
+			\draw[arrow] (label_orig.south) |- (combined.west);
+			\draw[arrow] (label_cf.south)   |- (combined.east);
+			
+		\end{tikzpicture}
+		\caption{Counterfactual Data Augmentation (CDA).  Every balanced biography is
+			duplicated with all gendered surface forms swapped.  The profession label
+			is unchanged; the gender label is flipped.  Both the original and the
+			counterfactual version are added to the training set.}
+		\label{fig:cda}
+	\end{figure}
 	
 	\subsection{Overall Results}
 	The debiased model reduced the average gender gap from 26.1\% to 5.1\%.
@@ -194,11 +418,11 @@
 	\end{figure}
 	
 	\subsection{Performance Breakdown}
-	A critical component of our evaluation involved testing the model on "Counter-Stereotypical" samples. For example: female surgeons or male nurses.
+	A critical component of our evaluation involved testing the model on ``Counter-Stereotypical'' samples. For example: female surgeons or male nurses.
 	
-	Our analysis shown in Figure 27 reveals a stark contrast in performance. The biased model maintained high accuracy in stereotypical samples but saw a sharp decline when encountering counter-stereotypical data. This confirms that the model was using gendered linguistic cues as "shortcuts" for professional classification.
+	Our analysis shown in Figure 27 reveals a stark contrast in performance. The biased model maintained high accuracy in stereotypical samples but saw a sharp decline when encountering counter-stereotypical data. This confirms that the model was using gendered linguistic cues as ``shortcuts'' for professional classification.
 	
-	By implementing counterfactual data augmentation, The debiased model achieved a much more uniform accuracy distribution. As shown in Figure 20, the per-profession gender accuracy gap for roles like "Surgeon" and "Software Engineer" narrowed significantly. While this led to a negligible decrease in overall accuracy (from 69.5\% to 69.0\%), the trade-off is justified by the drastic reduction in the Average Gender Gap, which fell from 26.1\% to 5.1\%, as shown in Figure 18.
+	By implementing counterfactual data augmentation, The debiased model achieved a much more uniform accuracy distribution. As shown in Figure 20, the per-profession gender accuracy gap for roles like ``Surgeon'' and ``Software Engineer'' narrowed significantly. While this led to a negligible decrease in overall accuracy (from 69.5\% to 69.0\%), the trade-off is justified by the drastic reduction in the Average Gender Gap, which fell from 26.1\% to 5.1\%, as shown in Figure 18.
 	
 	\begin{figure}[ht]
 		\centering
@@ -231,7 +455,7 @@
 	\end{figure}
 	
 	\section{Conclusion}
-	By incorporating all 30 performance and bias metrics, we can see a clear trend: counterfactual data augmentation significantly improves model fairness without a substantial loss in predictive power. It demonstrated that LLM-based pipelines inherit systemic biases from datasets like Bias-in-Bios, where professions such as "Dietitian" and "Nurse" are heavily female-skewed. while "Surgeon" and "Software Engineer" remain male-dominated.
+	By incorporating all 30 performance and bias metrics, we can see a clear trend: counterfactual data augmentation significantly improves model fairness without a substantial loss in predictive power. It demonstrated that LLM-based pipelines inherit systemic biases from datasets like Bias-in-Bios, where professions such as ``Dietitian'' and ``Nurse'' are heavily female-skewed, while ``Surgeon'' and ``Software Engineer'' remain male-dominated.
 	
 	Our results prove that Counterfactual Data Augmentation is a highly effective mitigation strategy. By balancing the training distribution, we successfully decoupled gender indicators from professional labels.
 	
