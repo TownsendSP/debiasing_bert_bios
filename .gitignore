@@ -1,0 +1,21 @@
+# LaTeX auxiliary files
+report_tex/*.aux
+report_tex/*.log
+report_tex/*.out
+report_tex/*.toc
+report_tex/*.fls
+report_tex/*.fdb_latexmk
+report_tex/*.synctex.gz
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Data / model checkpoints (large artifacts)
+biasbios_data/
+raw_bert/
+biased_bert/
+debiased_bert/
+raw_bert_tokenizer/
