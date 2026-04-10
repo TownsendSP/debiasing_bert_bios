@@ -62,7 +62,7 @@
 			\begin{scope}[on background layer]
 				\node[draw=blue!50, dashed, rounded corners, inner sep=6pt,
 				fit=(owt)(tok)(bert)(rawbert), fill=blue!4,
-				label={[grouplabel, blue!70]above:Phase 1 — Base Pre-training}] {};
+				label={[grouplabel, blue!70]above:Phase 1: Base Pre-training}] {};
 			\end{scope}
 			
 			% ---- Phase 2: Dataset ----
@@ -74,7 +74,7 @@
 			\begin{scope}[on background layer]
 				\node[draw=green!50, dashed, rounded corners, inner sep=6pt,
 				fit=(bibios)(eda), fill=green!4,
-				label={[grouplabel, green!60!black]above:Phase 2 — Dataset Profiling}] {};
+				label={[grouplabel, green!60!black]above:Phase 2: Dataset Profiling}] {};
 			\end{scope}
 			
 			% ---- Phase 3: Fine-tuning (two branches) ----
@@ -94,7 +94,7 @@
 			\begin{scope}[on background layer]
 				\node[draw=orange!60, dashed, rounded corners, inner sep=6pt,
 				fit=(biased)(debiased), fill=orange!4,
-				label={[grouplabel, orange!70!black]above:Phase 3 — Fine-tuning}] {};
+				label={[grouplabel, orange!70!black]above:Phase 3: Fine-tuning}] {};
 			\end{scope}
 			
 			% ---- Phase 4: Evaluation ----
@@ -110,7 +110,7 @@
 			\begin{scope}[on background layer]
 				\node[draw=purple!50, dashed, rounded corners, inner sep=6pt,
 				fit=(eval_b)(eval_d)(compare), fill=purple!4,
-				label={[grouplabel, purple!60]above:Phase 4 — Evaluation}] {};
+				label={[grouplabel, purple!60]above:Phase 4: Evaluation}] {};
 			\end{scope}
 			
 		\end{tikzpicture}
@@ -307,10 +307,10 @@
 	
 	The debiased training pipeline applies two complementary interventions before any gradient step is taken.
 	
-	\subsubsection*{Step 1 — Gender Balancing}
+	\subsubsection*{Step 1: Gender Balancing}
 	For every profession class, we independently sub-sample the male and female subsets to their common minimum count, producing a dataset that is perfectly balanced across gender within each profession.
 	
-	\subsubsection*{Step 2 — Counterfactual Data Augmentation (CDA)}
+	\subsubsection*{Step 2: Counterfactual Data Augmentation (CDA)}
 	Each biography in the balanced set is duplicated with its gendered cues swapped: pronouns (\textit{he} $\leftrightarrow$ \textit{she}, \textit{him} $\leftrightarrow$ \textit{her}, etc.), titles (\textit{Mr.} $\leftrightarrow$ \textit{Ms.}), and a curated list of gendered kinship/role words (\textit{father} $\leftrightarrow$ \textit{mother}, \textit{brother} $\leftrightarrow$ \textit{sister}, \ldots).  The profession label is preserved; only the gender label is flipped.  This teaches BERT that the same biography could belong to a person of either gender, preventing it from using gender as a predictive shortcut.
 	
 	Figure~\ref{fig:cda} illustrates this augmentation step.
