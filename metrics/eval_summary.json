@@ -1,0 +1,10 @@
+{
+  "model_dir": "./raw_bert",
+  "samples": 10000,
+  "masked_tokens": 654744,
+  "accuracy": 0.28772772259081414,
+  "loss": 5.898065980072993,
+  "perplexity": 364.33216038757774,
+  "unique_pred_tokens": 2018,
+  "unique_gold_tokens": 2653
+}

@@ -1,0 +1,230 @@
+\documentclass[11pt,letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{geometry}
+
+\geometry{margin=0.75in}
+
+\title{\textbf{Comprehensive Project Report: \\ BERT Pre-training and Bias-in-Bios Mitigation}}
+\author{Townsend Southard Pantano, Omar}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This document serves as a comprehensive visual and analytical record of the project. It covers the pre-training of a 128M parameter BERT model, the exploratory analysis of the Bias-in-Bios dataset, and the comparative evaluation of biased vs. debiased fine-tuning strategies. We include all 30 metric visualizations generated during the project lifecycle.
+\end{abstract}
+
+\section{Introduction}
+This project investigates the lifecycle of gender bias in NLP models. By training a model from scratch and then fine-tuning it under different constraints, we identify how linguistic representations can both inherit and mitigate societal disparities.
+
+\section{Phase 1: Base BERT Pre-training}
+The model was trained on 1M rows of OpenWebText (approx. 3.2 GB). The architecture features 14 layers and 12 heads (~128.8M parameters). Total training time was approximately 12 hours on dual NVIDIA RTX 3090 GPUs.
+
+\subsection{Pre-training Performance Metrics}
+The following figures illustrate the Masked Language Modeling (MLM) training process.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../metrics/loss_perplexity.png}
+    \caption{Training and Validation Loss/Perplexity.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../metrics/accuracy_f1.png}
+    \caption{MLM Accuracy and F1 Score evolution.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../metrics/learning_rate.png}
+    \caption{Learning rate schedule (Linear decay with warmup).}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../metrics/throughput.png}
+    \caption{Training throughput (Samples per second).}
+\end{figure}
+
+\subsection{Architecture Diagnostics}
+Detailed analysis of the model's token-level behavior.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../metrics/accuracy_by_position.png}
+    \caption{MLM Accuracy by token position in sequence.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../metrics/per_token_accuracy.png}
+    \caption{Accuracy for top-K frequent tokens.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../metrics/token_distribution.png}
+    \caption{Distribution of predicted vs. gold tokens.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../metrics/loss_distribution.png}
+    \caption{Distribution of cross-entropy loss across samples.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../metrics/epoch_summary.png}
+    \caption{Summary of metrics per epoch.}
+\end{figure}
+
+\clearpage
+
+\section{Phase 2: Dataset Bias Profiling}
+We analyzed the Bias-in-Bios dataset (396k biographies) to identify inherent gender skews.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../biasbios_metrics/08_overall_balance.png}
+    \caption{Overall dataset gender balance.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../biasbios_metrics/01_profession_counts.png}
+    \caption{Total biographies per profession (Class Imbalance).}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../biasbios_metrics/02_gender_breakdown_stacked.png}
+    \caption{Absolute gender counts per profession.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../biasbios_metrics/03_gender_pct_horizontal.png}
+    \caption{Percentage split of genders per profession.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../biasbios_metrics/04_prob_female_dotplot.png}
+    \caption{Probability of a biography being female given the profession.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../biasbios_metrics/05_bias_diverging.png}
+    \caption{Diverging Bias Score (\%Female - 50\%).}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../biasbios_metrics/06_absolute_gap.png}
+    \caption{Absolute representation gap (samples needed for parity).}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.5\textwidth]{../biasbios_metrics/07_gender_heatmap.png}
+    \caption{Heatmap of gender distribution density.}
+\end{figure}
+
+\clearpage
+
+\section{Phase 3 \& 4: Comparison of Biased and Debiased Models}
+The "Biased" model was trained with stereotypical oversampling, while the "Debiased" model used counterfactual augmentation and balancing.
+
+\subsection{Overall Results}
+The debiased model reduced the average gender gap from 26.1\% to 5.1\%.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../comparison_metrics/01_overall_comparison.png}
+    \caption{Summary of Accuracy, F1, and Gender Gaps.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../comparison_metrics/11_summary_dashboard.png}
+    \caption{Comprehensive performance dashboard.}
+\end{figure}
+
+\subsection{Bias Metrics}
+Detailed breakdown of fairness metrics across the two models.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../comparison_metrics/04_gender_gap_comparison.png}
+    \caption{Direct comparison of per-profession gender accuracy gaps.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../comparison_metrics/05_gap_reduction.png}
+    \caption{Visualizing the reduction in bias per category.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../comparison_metrics/07_tpr_fpr_gaps.png}
+    \caption{True Positive Rate and False Positive Rate gaps.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../comparison_metrics/08_bias_radar.png}
+    \caption{Radar chart of bias across different professional clusters.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../comparison_metrics/12_demographic_parity.png}
+    \caption{Demographic parity difference comparison.}
+\end{figure}
+
+\subsection{Performance Breakdown}
+Analyzing where the model performs best and how it handles stereotypes.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../comparison_metrics/02_gender_accuracy.png}
+    \caption{Accuracy breakdown by gender.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../comparison_metrics/03_per_profession_accuracy.png}
+    \caption{Per-profession accuracy comparison.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../comparison_metrics/09_stereotype_analysis.png}
+    \caption{Accuracy on Stereotypical vs. Counter-Stereotypical samples.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../comparison_metrics/06_confusion_matrices.png}
+    \caption{Confusion matrices for both models.}
+\end{figure}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.9\textwidth]{../comparison_metrics/10_training_curves.png}
+    \caption{Fine-tuning training curves comparison.}
+\end{figure}
+
+\section{Conclusion}
+This exhaustive report demonstrates that by incorporating all 30 performance and bias metrics, we can see a clear trend: counterfactual data augmentation significantly improves model fairness without a substantial loss in predictive power.
+
+\end{document}
